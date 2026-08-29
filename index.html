@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIマッチング診断 — AIはあなたの会社を、どう紹介するか。</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;600;800&family=Noto+Sans+JP:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0F1219;
+    --panel:#171C26;
+    --panel-2:#1D2330;
+    --line:rgba(255,255,255,0.09);
+    --text:#E7E9EE;
+    --text-dim:#8B93A3;
+    --text-faint:#5B6273;
+    --cyan:#57D9C9;
+    --cyan-dim:rgba(87,217,201,0.14);
+    --amber:#EFA75B;
+    --amber-dim:rgba(239,167,91,0.14);
+    --stamp-red:#B4432E;
+    --serif:'Shippori Mincho', serif;
+    --sans:'Noto Sans JP', sans-serif;
+    --mono:'JetBrains Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(87,217,201,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 10%, rgba(239,167,91,0.06), transparent 55%),
+      var(--ink);
+    color:var(--text);
+    font-family:var(--sans);
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  .wrap{max-width:820px;margin:0 auto;padding:64px 24px 120px;}
+  @media (max-width:600px){.wrap{padding:40px 16px 90px;}}
+
+  /* ---------- Hero ---------- */
+  .eyebrow{
+    display:inline-flex;align-items:center;gap:8px;
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+    color:var(--cyan);text-transform:uppercase;
+    padding:5px 12px;border:1px solid rgba(87,217,201,0.35);border-radius:100px;
+    background:var(--cyan-dim);
+  }
+  .eyebrow::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--cyan);
+    box-shadow:0 0 8px 1px var(--cyan);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+  @media (prefers-reduced-motion:reduce){.eyebrow::before{animation:none;}}
+
+  h1.hero{
+    font-family:var(--serif);font-weight:800;
+    font-size:clamp(28px,4.6vw,44px);line-height:1.42;
+    margin:20px 0 14px;color:#fff;letter-spacing:.01em;
+  }
+  h1.hero .accent{color:var(--cyan);}
+  .hero-sub{color:var(--text-dim);font-size:15.5px;max-width:56ch;margin:0 0 40px;}
+
+  /* ---------- Form ---------- */
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:28px;
+  }
+  label{display:block;font-size:12.5px;color:var(--text-dim);margin:0 0 8px;font-weight:500;letter-spacing:.02em;}
+  .field{margin-bottom:18px;}
+  input[type=text], textarea{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:10px;color:var(--text);font-family:var(--sans);font-size:15px;
+    padding:13px 14px;outline:none;transition:border-color .15s;
+  }
+  input[type=text]:focus, textarea:focus{border-color:var(--cyan);}
+  textarea{resize:vertical;min-height:110px;line-height:1.6;}
+  .hint{font-size:12.5px;color:var(--text-faint);margin-top:6px;}
+
+  .toggle-manual{
+    background:none;border:none;color:var(--text-dim);font-size:13.5px;
+    cursor:pointer;padding:2px 0;font-family:var(--sans);display:inline-flex;align-items:center;gap:6px;
+    text-decoration:none;border-bottom:1px dashed var(--text-faint);
+  }
+  .toggle-manual:hover{color:var(--cyan);}
+  .manual-box{display:none;margin-top:14px;}
+  .manual-box.show{display:block;}
+  .manual-flag{
+    display:none;font-size:13px;color:var(--amber);background:var(--amber-dim);
+    border:1px solid rgba(239,167,91,0.35);border-radius:10px;padding:12px 14px;margin-bottom:16px;
+  }
+  .manual-flag.show{display:block;}
+
+  .btn{
+    width:100%;padding:15px 20px;border-radius:10px;border:none;cursor:pointer;
+    font-family:var(--sans);font-weight:700;font-size:15.5px;letter-spacing:.02em;
+    background:var(--cyan);color:#0B1712;transition:transform .12s, box-shadow .12s;
+    box-shadow:0 0 0 0 rgba(87,217,201,0);
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px -8px rgba(87,217,201,0.5);}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+  .btn-ghost{
+    background:transparent;border:1px solid var(--line);color:var(--text);
+  }
+  .btn-ghost:hover{border-color:var(--cyan);box-shadow:none;}
+  .btn-small{width:auto;padding:8px 14px;font-size:13px;}
+
+  .error-box{
+    display:none;margin-top:16px;font-size:13.5px;color:#FF9C8A;
+    background:rgba(180,67,46,0.14);border:1px solid rgba(180,67,46,0.4);
+    border-radius:10px;padding:12px 14px;
+  }
+  .error-box.show{display:block;}
+
+  /* ---------- Loading ---------- */
+  #loading{display:none;margin-top:36px;text-align:center;}
+  #loading.show{display:block;}
+  .scan-box{
+    position:relative;overflow:hidden;border:1px solid var(--line);border-radius:14px;
+    background:var(--panel);padding:34px 20px;font-family:var(--mono);color:var(--cyan);
+    font-size:13.5px;letter-spacing:.03em;
+  }
+  .scan-box::after{
+    content:"";position:absolute;left:0;right:0;height:2px;
+    background:linear-gradient(90deg, transparent, var(--cyan), transparent);
+    box-shadow:0 0 16px 2px var(--cyan);
+    animation:scan 1.8s ease-in-out infinite;
+  }
+  @keyframes scan{0%{top:0;}50%{top:100%;}100%{top:0;}}
+  @media (prefers-reduced-motion:reduce){.scan-box::after{animation:none;top:50%;}}
+  #loading-msg{margin-top:14px;color:var(--text-dim);font-size:13px;}
+
+  /* ---------- Results ---------- */
+  #results{display:none;margin-top:52px;}
+  #results.show{display:block;}
+  .section{margin-bottom:48px;}
+  .section-eyebrow{
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--text-faint);
+    text-transform:uppercase;margin-bottom:10px;
+  }
+  .section h2{
+    font-family:var(--serif);font-weight:700;font-size:22px;color:#fff;margin:0 0 18px;
+  }
+
+  /* chat sim */
+  .q-bubble{
+    display:inline-block;background:var(--panel-2);border:1px solid var(--line);
+    border-radius:14px 14px 14px 4px;padding:12px 16px;font-size:14px;color:var(--text-dim);
+    margin-bottom:14px;max-width:90%;
+  }
+  .q-bubble::before{content:"顧客の質問　";color:var(--text-faint);font-family:var(--mono);font-size:10.5px;display:block;margin-bottom:4px;letter-spacing:.08em;}
+  .answers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:32px;}
+  @media (max-width:640px){.answers{grid-template-columns:1fr;}}
+  .ans-card{border-radius:12px;padding:16px 17px;font-size:14px;}
+  .ans-card.current{background:rgba(255,255,255,0.03);border:1px solid var(--line);color:var(--text-dim);}
+  .ans-card.ideal{background:var(--cyan-dim);border:1px solid rgba(87,217,201,0.4);color:var(--text);}
+  .ans-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+  .ans-card.current .ans-label{color:var(--text-faint);}
+  .ans-card.ideal .ans-label{color:var(--cyan);}
+  .ans-label::before{content:"●";font-size:8px;}
+
+  /* score + stamp */
+  .score-wrap{display:flex;gap:28px;align-items:center;flex-wrap:wrap;}
+  .stamp{
+    width:96px;height:96px;flex:0 0 auto;border-radius:50%;
+    border:3px solid var(--stamp-red);color:var(--stamp-red);
+    display:flex;align-items:center;justify-content:center;flex-direction:column;
+    font-family:var(--serif);transform:rotate(-6deg);opacity:.92;
+    box-shadow:inset 0 0 0 1px rgba(180,67,46,0.3);
+  }
+  .stamp .rank{font-size:34px;font-weight:800;line-height:1;}
+  .stamp .rank-label{font-size:9px;letter-spacing:.1em;margin-top:2px;}
+  .score-bars{flex:1;min-width:220px;}
+  .score-row{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .score-row .name{width:150px;font-size:13px;color:var(--text-dim);flex:0 0 auto;}
+  .score-row .bar-track{flex:1;height:8px;background:var(--panel-2);border-radius:5px;overflow:hidden;}
+  .score-row .bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),#3FB7A8);border-radius:5px;}
+  .score-row .num{font-family:var(--mono);font-size:12.5px;color:var(--text-dim);width:44px;text-align:right;flex:0 0 auto;}
+  .caveat{margin-top:16px;font-size:13.5px;color:var(--amber);background:var(--amber-dim);
+    border:1px solid rgba(239,167,91,0.3);border-radius:10px;padding:12px 14px;}
+
+  .perception-card{
+    font-family:var(--mono);font-size:13.5px;line-height:1.9;color:var(--text);
+    background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    padding:20px 22px;position:relative;
+  }
+  .perception-card::before{content:"AI認知プロファイル";position:absolute;top:-10px;left:16px;
+    background:var(--ink);padding:0 8px;font-size:10.5px;color:var(--cyan);letter-spacing:.08em;}
+
+  .risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:640px){.risk-grid{grid-template-columns:1fr;}}
+  .risk-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);
+    border-radius:10px;padding:15px 16px;}
+  .risk-card .risk-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .risk-card .risk-body{font-size:13px;color:var(--text-dim);}
+
+  .action-card{
+    background:linear-gradient(160deg, var(--cyan-dim), rgba(87,217,201,0.03));
+    border:1px solid rgba(87,217,201,0.4);border-radius:14px;padding:22px 24px;
+  }
+  .action-card .tag{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--cyan);text-transform:uppercase;margin-bottom:10px;display:block;}
+  .action-text{font-size:15.5px;line-height:1.9;color:#fff;margin-bottom:16px;}
+  .copy-btn{display:inline-flex;align-items:center;gap:7px;}
+
+  .steps{display:flex;flex-direction:column;gap:0;border-radius:12px;overflow:hidden;border:1px solid var(--line);}
+  .step-row{display:flex;gap:16px;padding:16px 18px;background:var(--panel);}
+  .step-row:not(:last-child){border-bottom:1px solid var(--line);}
+  .step-num{font-family:var(--mono);color:var(--text-faint);font-size:13px;flex:0 0 auto;padding-top:1px;}
+  .step-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:3px;}
+  .step-desc{font-size:13px;color:var(--text-dim);}
+
+  .conclusion{border-top:1px solid var(--line);padding-top:24px;}
+  .conclusion p{font-size:14px;margin:0 0 10px;}
+  .conclusion .loss{color:var(--amber);}
+  .conclusion .recheck{color:var(--text-dim);}
+
+  .reset-row{margin-top:44px;text-align:center;}
+
+  /* ---------- Recruit CTA ---------- */
+  #recruit-cta{display:none;margin-top:48px;border:1px solid rgba(239,167,91,0.35);border-radius:14px;
+    padding:24px 26px;background:var(--amber-dim);}
+  #recruit-cta.show{display:block;}
+  #recruit-cta .cta-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;color:var(--amber);
+    text-transform:uppercase;margin-bottom:8px;}
+  #recruit-cta p{font-size:14px;color:var(--text);margin:0 0 16px;line-height:1.8;}
+  .btn-amber{background:var(--amber);color:#241606;}
+  .btn-amber:hover{box-shadow:0 8px 24px -8px rgba(239,167,91,0.5);}
+
+  /* ---------- Recruit loading / results ---------- */
+  #recruit-loading{display:none;margin-top:36px;text-align:center;}
+  #recruit-loading.show{display:block;}
+  #recruit-results{display:none;margin-top:52px;}
+  #recruit-results.show{display:block;}
+
+  .stamp.amber{border-color:var(--amber);color:var(--amber);box-shadow:inset 0 0 0 1px rgba(239,167,91,0.3);}
+  .score-row .bar-fill.amber{background:linear-gradient(90deg,var(--amber),#C97F3A);}
+
+  .signal-list{list-style:none;margin:0;padding:0;}
+  .signal-list li{font-size:13.5px;color:var(--text-dim);padding:12px 0;border-bottom:1px solid var(--line);}
+  .signal-list li:last-child{border-bottom:none;}
+  .signal-list li::before{content:"※ ";color:var(--text-faint);}
+
+  .fit-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:640px){.fit-grid{grid-template-columns:1fr;}}
+  .fit-card{border-radius:10px;padding:15px 16px;font-size:13px;}
+  .fit-card.good{background:var(--cyan-dim);border:1px solid rgba(87,217,201,0.35);color:var(--text);}
+  .fit-card.caution{background:rgba(255,255,255,0.03);border:1px solid var(--line);color:var(--text-dim);}
+  .fit-card .fit-label{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    margin-bottom:8px;display:block;}
+  .fit-card.good .fit-label{color:var(--cyan);}
+  .fit-card.caution .fit-label{color:var(--text-faint);}
+  .fit-card ul{margin:0;padding-left:18px;}
+  .fit-card li{margin-bottom:4px;}
+
+  .lock-box{border:1px dashed var(--line);border-radius:12px;padding:24px 22px;text-align:center;margin-top:8px;}
+  .lock-box p{font-size:13.5px;color:var(--text-dim);margin:0 0 16px;line-height:1.8;}
+  .lock-box input[type=email]{
+    width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font-family:var(--sans);font-size:15px;padding:13px 14px;outline:none;
+    margin-bottom:10px;transition:border-color .15s;
+  }
+  .lock-box input[type=email]:focus{border-color:var(--cyan);}
+  .lock-error{display:none;font-size:12.5px;color:#FF9C8A;text-align:left;margin:-4px 0 10px;}
+  .lock-error.show{display:block;}
+
+  .dna-bridge{border-top:1px solid var(--line);margin-top:28px;padding-top:22px;}
+  .dna-bridge p{font-size:14px;color:var(--text-dim);line-height:1.9;margin:0 0 16px;}
+
+  footer{margin-top:70px;font-size:12px;color:var(--text-faint);text-align:center;line-height:1.9;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="eyebrow">AI Matching Diagnosis</span>
+  <h1 class="hero">AIは、あなたの会社を<br>どう<span class="accent">紹介</span>しているか。</h1>
+  <p class="hero-sub">会社名とURLを入力するだけで、ChatGPTやPerplexityに「御社の課題解決先」として聞いたとき、実際にどう答えるかをシミュレーションします。</p>
+
+  <div class="panel" id="form-panel">
+    <div class="field">
+      <label for="company-name">会社名</label>
+      <input type="text" id="company-name" placeholder="例：株式会社◯◯製作所">
+    </div>
+    <div class="field">
+      <label for="site-url">WEBサイトURL</label>
+      <input type="text" id="site-url" placeholder="https://example.co.jp">
+      <div class="hint">トップページ・代表挨拶・事業内容・強みのページなどを自動で読み込みます。</div>
+    </div>
+
+    <button type="button" class="toggle-manual" id="toggle-manual">＋ サイトの文章を直接貼り付ける（任意）</button>
+
+    <div class="manual-flag" id="manual-flag">
+      サイトの内容をうまく読み取れませんでした。お手数ですが、対象ページ（トップページ・代表挨拶・事業内容・強みなど）の文章をコピーして、下の欄に貼り付けてください。
+    </div>
+
+    <div class="manual-box" id="manual-box">
+      <div class="field">
+        <label for="manual-text">サイトのテキスト（コピー＆ペースト）</label>
+        <textarea id="manual-text" placeholder="対象ページの文章をそのまま貼り付けてください"></textarea>
+      </div>
+    </div>
+
+    <div class="field" style="margin-top:6px;">
+      <button type="button" class="btn" id="submit-btn">AIマッチング診断をはじめる</button>
+    </div>
+    <div class="error-box" id="error-box"></div>
+  </div>
+
+  <div id="loading">
+    <div class="scan-box" id="scan-box">
+      AI_SCAN.exe ── analyzing target site
+    </div>
+    <div id="loading-msg">サイトを読み込んでいます…</div>
+  </div>
+
+  <div id="results">
+
+    <div class="section">
+      <div class="section-eyebrow">01 — Simulation</div>
+      <h2>AIの実際の回答シミュレーション</h2>
+      <div id="sim-container"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">02 — Score</div>
+      <h2>総合スコア</h2>
+      <div class="score-wrap">
+        <div class="stamp"><span class="rank" id="rank-val">–</span><span class="rank-label">RANK</span></div>
+        <div class="score-bars" id="score-bars"></div>
+      </div>
+      <div class="caveat" id="score-caveat"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">03 — Perception</div>
+      <h2>AIから見た御社の「見え方」</h2>
+      <div class="perception-card" id="perception-text"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">04 — Risk</div>
+      <h2>AIに選ばれないリスク</h2>
+      <div class="risk-grid" id="risk-grid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">05 — Action</div>
+      <h2>今すぐ貼れる一文</h2>
+      <div class="action-card">
+        <span class="tag">Copy &amp; Paste Ready</span>
+        <div class="action-text" id="action-text"></div>
+        <button type="button" class="btn btn-ghost btn-small copy-btn" id="copy-action-btn">この文章をコピー</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">06 — Next</div>
+      <h2>発展的な3ステップ</h2>
+      <div class="steps" id="steps-container"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">07 — Summary</div>
+      <h2>総括</h2>
+      <div class="conclusion" id="conclusion-container"></div>
+    </div>
+
+    <div class="reset-row">
+      <button type="button" class="btn btn-ghost btn-small" id="reset-btn">もう一度診断する</button>
+    </div>
+  </div>
+
+  <div id="recruit-cta">
+    <div class="cta-eyebrow">Recruit Diagnosis（無料）</div>
+    <p>この会社は、就活者にAIからどう見えているでしょうか。続けて、採用面でのAIからの見え方も診断できます。</p>
+    <button type="button" class="btn btn-amber" id="recruit-cta-btn">続けて、採用面でのAIからの見え方も見てみる</button>
+  </div>
+
+  <div id="recruit-loading">
+    <div class="scan-box" id="recruit-scan-box" style="color:var(--amber);">
+      AI_SCAN.exe ── analyzing candidate perspective
+    </div>
+    <div id="recruit-loading-msg">求職者目線での見え方を分析しています…</div>
+  </div>
+
+  <div id="recruit-results">
+
+    <div class="section">
+      <div class="section-eyebrow">R01 — Score</div>
+      <h2>採用軸スコア（就活者目線）</h2>
+      <div class="score-wrap">
+        <div class="stamp amber"><span class="rank" id="recruit-rank-val">–</span><span class="rank-label">RANK</span></div>
+        <div class="score-bars" id="recruit-score-bars"></div>
+      </div>
+      <div class="caveat" id="recruit-score-caveat"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">R02 — Conviction</div>
+      <h2>AIが読み取った「経営者のこだわり」</h2>
+      <div class="perception-card" id="recruit-conviction-text" style="color:var(--amber);"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">R03 — Signals</div>
+      <h2>働く環境シグナル（推測）</h2>
+      <ul class="signal-list" id="recruit-signal-list"></ul>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">R04 — Fit</div>
+      <h2>価値観マッチング</h2>
+      <div class="fit-grid" id="recruit-fit-grid"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-eyebrow">R05 — Next</div>
+      <h2>改善提案</h2>
+
+      <div class="lock-box" id="recruit-lock-box">
+        <p>ここから先の改善提案は、メールでお届けします。</p>
+        <input type="email" id="recruit-email" placeholder="name@company.co.jp">
+        <div class="lock-error" id="recruit-email-error">メールアドレスを入力してください。</div>
+        <button type="button" class="btn btn-amber btn-small" id="recruit-unlock-btn">改善提案を受け取る</button>
+      </div>
+
+      <div id="recruit-unlocked" style="display:none;">
+        <div class="steps" id="recruit-steps-container"></div>
+        <div class="dna-bridge">
+          <p id="recruit-dna-bridge-text"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="reset-row">
+      <button type="button" class="btn btn-ghost btn-small" id="recruit-reset-btn">採用版をたたむ</button>
+    </div>
+  </div>
+
+  <footer>
+    診断はAIによるシミュレーションであり、実際の検索結果を保証するものではありません。<br>
+    サイトの表現を変更した後、2〜4週間ほど空けて再診断すると変化を確認できます。
+  </footer>
+</div>
+
+<script>
+const els = {
+  companyName: document.getElementById('company-name'),
+  siteUrl: document.getElementById('site-url'),
+  toggleManual: document.getElementById('toggle-manual'),
+  manualBox: document.getElementById('manual-box'),
+  manualFlag: document.getElementById('manual-flag'),
+  manualText: document.getElementById('manual-text'),
+  submitBtn: document.getElementById('submit-btn'),
+  errorBox: document.getElementById('error-box'),
+  formPanel: document.getElementById('form-panel'),
+  loading: document.getElementById('loading'),
+  loadingMsg: document.getElementById('loading-msg'),
+  results: document.getElementById('results'),
+  resetBtn: document.getElementById('reset-btn'),
+  copyActionBtn: document.getElementById('copy-action-btn'),
+
+  recruitCta: document.getElementById('recruit-cta'),
+  recruitCtaBtn: document.getElementById('recruit-cta-btn'),
+  recruitLoading: document.getElementById('recruit-loading'),
+  recruitLoadingMsg: document.getElementById('recruit-loading-msg'),
+  recruitResults: document.getElementById('recruit-results'),
+  recruitLockBox: document.getElementById('recruit-lock-box'),
+  recruitUnlocked: document.getElementById('recruit-unlocked'),
+  recruitEmail: document.getElementById('recruit-email'),
+  recruitEmailError: document.getElementById('recruit-email-error'),
+  recruitUnlockBtn: document.getElementById('recruit-unlock-btn'),
+  recruitResetBtn: document.getElementById('recruit-reset-btn'),
+};
+
+els.toggleManual.addEventListener('click', () => {
+  const showing = els.manualBox.classList.toggle('show');
+  els.toggleManual.textContent = showing ? '－ サイトの文章を直接貼り付ける（任意）' : '＋ サイトの文章を直接貼り付ける（任意）';
+});
+
+const LOADING_MESSAGES = [
+  'サイトを読み込んでいます…',
+  '強み・パーパス・ターゲットを抽出しています…',
+  'AIならどう答えるかをシミュレーションしています…',
+  'スコアを算出しています…',
+  '改善のための一文を作成しています…',
+];
+let loadingTimer = null;
+function startLoadingMessages(){
+  let i = 0;
+  els.loadingMsg.textContent = LOADING_MESSAGES[0];
+  loadingTimer = setInterval(() => {
+    i = (i + 1) % LOADING_MESSAGES.length;
+    els.loadingMsg.textContent = LOADING_MESSAGES[i];
+  }, 2200);
+}
+function stopLoadingMessages(){
+  if (loadingTimer) clearInterval(loadingTimer);
+  loadingTimer = null;
+}
+
+async function callDiagnosis(companyName, url, manualText){
+  let response;
+  try {
+    response = await fetch('/api/diagnose', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyName, url, manualText }),
+    });
+  } catch (networkErr){
+    throw new Error('サーバーへの通信に失敗しました: ' + (networkErr && networkErr.message ? networkErr.message : String(networkErr)));
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch(e){
+    throw new Error('サーバーからの応答を解釈できませんでした');
+  }
+
+  if (!response.ok){
+    throw new Error((data && data.error) ? data.error : ('サーバーエラー ステータス' + response.status));
+  }
+
+  return data;
+}
+
+function setBusy(busy){
+  els.submitBtn.disabled = busy;
+  els.submitBtn.textContent = busy ? '診断中…' : 'AIマッチング診断をはじめる';
+}
+
+function showError(msg){
+  els.errorBox.textContent = msg;
+  els.errorBox.classList.add('show');
+}
+function hideError(){
+  els.errorBox.classList.remove('show');
+}
+
+function renderResults(d){
+  // simulations
+  const simWrap = document.getElementById('sim-container');
+  simWrap.innerHTML = '';
+  (d.simulated_conversations || []).forEach(sim => {
+    const block = document.createElement('div');
+    const q = document.createElement('div');
+    q.className = 'q-bubble';
+    q.textContent = sim.question || '';
+    block.appendChild(q);
+
+    const answers = document.createElement('div');
+    answers.className = 'answers';
+
+    const cur = document.createElement('div');
+    cur.className = 'ans-card current';
+    cur.innerHTML = '<div class="ans-label">現状のまま</div>' + escapeHtml(sim.current_answer || '');
+    answers.appendChild(cur);
+
+    const ideal = document.createElement('div');
+    ideal.className = 'ans-card ideal';
+    ideal.innerHTML = '<div class="ans-label">言語化できていれば</div>' + escapeHtml(sim.ideal_answer || '');
+    answers.appendChild(ideal);
+
+    block.appendChild(answers);
+    simWrap.appendChild(block);
+  });
+
+  // score
+  document.getElementById('rank-val').textContent = (d.scores && d.scores.rank) || '–';
+  const barsWrap = document.getElementById('score-bars');
+  barsWrap.innerHTML = '';
+  const axisLabels = [
+    ['strength', '強みの明確さ'],
+    ['purpose', 'パーパスのわかりやすさ'],
+    ['target', 'ターゲットの特定度'],
+    ['structure', '情報の構造化度'],
+  ];
+  axisLabels.forEach(([key, label]) => {
+    const val = (d.scores && typeof d.scores[key] === 'number') ? d.scores[key] : 0;
+    const row = document.createElement('div');
+    row.className = 'score-row';
+    row.innerHTML = `
+      <div class="name">${label}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(0, Math.min(10, val)) * 10}%"></div></div>
+      <div class="num">${val}/10</div>
+    `;
+    barsWrap.appendChild(row);
+  });
+  document.getElementById('score-caveat').textContent = (d.scores && d.scores.caveat) || '';
+
+  // perception
+  document.getElementById('perception-text').textContent = d.ai_perception || '';
+
+  // risks
+  const riskGrid = document.getElementById('risk-grid');
+  riskGrid.innerHTML = '';
+  const riskLabels = [
+    ['strength', '強みの明確さ'],
+    ['purpose', 'パーパスのわかりやすさ'],
+    ['target', 'ターゲットの特定度'],
+    ['structure', '情報の構造化度'],
+  ];
+  riskLabels.forEach(([key, label]) => {
+    const card = document.createElement('div');
+    card.className = 'risk-card';
+    card.innerHTML = `<div class="risk-title">${label}</div><div class="risk-body">${escapeHtml((d.risks && d.risks[key]) || '')}</div>`;
+    riskGrid.appendChild(card);
+  });
+
+  // action sentence
+  document.getElementById('action-text').textContent = d.action_sentence || '';
+
+  // steps
+  const stepsWrap = document.getElementById('steps-container');
+  stepsWrap.innerHTML = '';
+  (d.next_steps || []).forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'step-row';
+    row.innerHTML = `
+      <div class="step-num">${String(idx + 1).padStart(2, '0')}</div>
+      <div>
+        <div class="step-title">${escapeHtml(s.title || '')}</div>
+        <div class="step-desc">${escapeHtml(s.description || '')}</div>
+      </div>
+    `;
+    stepsWrap.appendChild(row);
+  });
+
+  // conclusion
+  const conclWrap = document.getElementById('conclusion-container');
+  conclWrap.innerHTML = '';
+  if (d.conclusion){
+    if (d.conclusion.loss_note){
+      const p1 = document.createElement('p');
+      p1.className = 'loss';
+      p1.textContent = d.conclusion.loss_note;
+      conclWrap.appendChild(p1);
+    }
+    if (d.conclusion.recheck_note){
+      const p2 = document.createElement('p');
+      p2.className = 'recheck';
+      p2.textContent = d.conclusion.recheck_note;
+      conclWrap.appendChild(p2);
+    }
+  }
+
+  els.results.classList.add('show');
+  els.results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  // 基本診断が表示された直後に、採用版への誘いを出す
+  els.recruitCta.classList.add('show');
+  els.recruitResults.classList.remove('show');
+  els.recruitLockBox.style.display = 'block';
+  els.recruitUnlocked.style.display = 'none';
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function handleSubmit(){
+  hideError();
+  const companyName = els.companyName.value.trim();
+  const url = els.siteUrl.value.trim();
+  const manualText = els.manualText.value;
+
+  if (!companyName || !url){
+    showError('会社名とURLを入力してください。');
+    return;
+  }
+
+  setBusy(true);
+  els.results.classList.remove('show');
+  els.loading.classList.add('show');
+  els.manualFlag.classList.remove('show');
+  startLoadingMessages();
+
+  try {
+    const data = await callDiagnosis(companyName, url, manualText);
+
+    if (data.retrieval_success === false && !(manualText && manualText.trim())){
+      // 自動取得に失敗 → 手動貼り付けを促す
+      els.manualBox.classList.add('show');
+      els.toggleManual.textContent = '－ サイトの文章を直接貼り付ける（任意）';
+      els.manualFlag.classList.add('show');
+      if (data.retrieval_note){
+        els.manualFlag.textContent = data.retrieval_note + ' お手数ですが、対象ページの文章をコピーして、下の欄に貼り付けてから、もう一度お試しください。';
+      }
+      els.manualText.focus();
+    } else {
+      renderResults(data);
+    }
+  } catch (err){
+    console.error(err);
+    showError('診断中にエラーが発生しました。詳細: ' + (err && err.message ? err.message : String(err)));
+  } finally {
+    stopLoadingMessages();
+    els.loading.classList.remove('show');
+    setBusy(false);
+  }
+}
+
+els.submitBtn.addEventListener('click', handleSubmit);
+
+els.copyActionBtn.addEventListener('click', () => {
+  const text = document.getElementById('action-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    els.copyActionBtn.textContent = 'コピーしました';
+    setTimeout(() => { els.copyActionBtn.textContent = 'この文章をコピー'; }, 1800);
+  }).catch(() => {
+    els.copyActionBtn.textContent = 'コピーできませんでした';
+  });
+});
+
+els.resetBtn.addEventListener('click', () => {
+  els.results.classList.remove('show');
+  els.recruitCta.classList.remove('show');
+  els.recruitResults.classList.remove('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+/* ---------- 採用版（Recruit） ---------- */
+
+const RECRUIT_LOADING_MESSAGES = [
+  '求職者目線での見え方を分析しています…',
+  '経営者のこだわりを抽出しています…',
+  '働く環境シグナルを推測しています…',
+  '価値観の合う人物像を整理しています…',
+];
+let recruitLoadingTimer = null;
+function startRecruitLoadingMessages(){
+  let i = 0;
+  els.recruitLoadingMsg.textContent = RECRUIT_LOADING_MESSAGES[0];
+  recruitLoadingTimer = setInterval(() => {
+    i = (i + 1) % RECRUIT_LOADING_MESSAGES.length;
+    els.recruitLoadingMsg.textContent = RECRUIT_LOADING_MESSAGES[i];
+  }, 2200);
+}
+function stopRecruitLoadingMessages(){
+  if (recruitLoadingTimer) clearInterval(recruitLoadingTimer);
+  recruitLoadingTimer = null;
+}
+
+async function callRecruitDiagnosis(companyName, url, manualText){
+  let response;
+  try {
+    response = await fetch('/api/diagnose-recruit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ companyName, url, manualText }),
+    });
+  } catch (networkErr){
+    throw new Error('サーバーへの通信に失敗しました: ' + (networkErr && networkErr.message ? networkErr.message : String(networkErr)));
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch(e){
+    throw new Error('サーバーからの応答を解釈できませんでした');
+  }
+
+  if (!response.ok){
+    throw new Error((data && data.error) ? data.error : ('サーバーエラー ステータス' + response.status));
+  }
+
+  return data;
+}
+
+function renderRecruitResults(d){
+  document.getElementById('recruit-rank-val').textContent = (d.recruit_scores && d.recruit_scores.rank) || '–';
+  const barsWrap = document.getElementById('recruit-score-bars');
+  barsWrap.innerHTML = '';
+  const axisLabels = [
+    ['growth', '強みの明確さ'],
+    ['conviction', 'こだわりの言語化度'],
+    ['fit', '価値観の合う人の分かりやすさ'],
+    ['info', '働く環境情報の見つけやすさ'],
+  ];
+  axisLabels.forEach(([key, label]) => {
+    const val = (d.recruit_scores && typeof d.recruit_scores[key] === 'number') ? d.recruit_scores[key] : 0;
+    const row = document.createElement('div');
+    row.className = 'score-row';
+    row.innerHTML = `
+      <div class="name">${label}</div>
+      <div class="bar-track"><div class="bar-fill amber" style="width:${Math.max(0, Math.min(10, val)) * 10}%"></div></div>
+      <div class="num">${val}/10</div>
+    `;
+    barsWrap.appendChild(row);
+  });
+  document.getElementById('recruit-score-caveat').textContent = (d.recruit_scores && d.recruit_scores.caveat) || '';
+
+  document.getElementById('recruit-conviction-text').textContent = d.conviction_text || '';
+
+  const signalList = document.getElementById('recruit-signal-list');
+  signalList.innerHTML = '';
+  (d.environment_signals || []).forEach(signal => {
+    const li = document.createElement('li');
+    li.textContent = signal;
+    signalList.appendChild(li);
+  });
+
+  const fitGrid = document.getElementById('recruit-fit-grid');
+  fitGrid.innerHTML = '';
+  const good = document.createElement('div');
+  good.className = 'fit-card good';
+  good.innerHTML = '<span class="fit-label">相性が良さそう</span><ul>' +
+    ((d.fit_persona && d.fit_persona.good_fit) || []).map(t => `<li>${escapeHtml(t)}</li>`).join('') + '</ul>';
+  fitGrid.appendChild(good);
+  const caution = document.createElement('div');
+  caution.className = 'fit-card caution';
+  caution.innerHTML = '<span class="fit-label">合わない可能性</span><ul>' +
+    ((d.fit_persona && d.fit_persona.caution) || []).map(t => `<li>${escapeHtml(t)}</li>`).join('') + '</ul>';
+  fitGrid.appendChild(caution);
+
+  const stepsWrap = document.getElementById('recruit-steps-container');
+  stepsWrap.innerHTML = '';
+  (d.next_steps || []).forEach((s, idx) => {
+    const row = document.createElement('div');
+    row.className = 'step-row';
+    row.innerHTML = `
+      <div class="step-num">${String(idx + 1).padStart(2, '0')}</div>
+      <div>
+        <div class="step-title">${escapeHtml(s.title || '')}</div>
+        <div class="step-desc">${escapeHtml(s.description || '')}</div>
+      </div>
+    `;
+    stepsWrap.appendChild(row);
+  });
+
+  document.getElementById('recruit-dna-bridge-text').textContent = d.dna_bridge || '';
+
+  els.recruitResults.classList.add('show');
+  els.recruitResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+els.recruitCtaBtn.addEventListener('click', async () => {
+  const companyName = els.companyName.value.trim();
+  const url = els.siteUrl.value.trim();
+  const manualText = els.manualText.value;
+
+  els.recruitCtaBtn.disabled = true;
+  els.recruitCtaBtn.textContent = '分析中…';
+  els.recruitLoading.classList.add('show');
+  startRecruitLoadingMessages();
+
+  try {
+    const data = await callRecruitDiagnosis(companyName, url, manualText);
+    renderRecruitResults(data);
+  } catch (err) {
+    console.error(err);
+    alert('採用版の診断中にエラーが発生しました。詳細: ' + (err && err.message ? err.message : String(err)));
+  } finally {
+    stopRecruitLoadingMessages();
+    els.recruitLoading.classList.remove('show');
+    els.recruitCtaBtn.disabled = false;
+    els.recruitCtaBtn.textContent = '続けて、採用面でのAIからの見え方も見てみる';
+  }
+});
+
+els.recruitUnlockBtn.addEventListener('click', async () => {
+  const email = els.recruitEmail.value.trim();
+  if (!email || !email.includes('@')) {
+    els.recruitEmailError.classList.add('show');
+    return;
+  }
+  els.recruitEmailError.classList.remove('show');
+
+  els.recruitUnlockBtn.disabled = true;
+  els.recruitUnlockBtn.textContent = '送信中…';
+
+  try {
+    await fetch('/api/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        companyName: els.companyName.value.trim(),
+        url: els.siteUrl.value.trim(),
+        source: 'recruit-report',
+      }),
+    });
+  } catch (err) {
+    console.warn('リード送信に失敗しましたが、表示は継続します。', err);
+  }
+
+  els.recruitLockBox.style.display = 'none';
+  els.recruitUnlocked.style.display = 'block';
+  els.recruitUnlockBtn.disabled = false;
+  els.recruitUnlockBtn.textContent = '改善提案を受け取る';
+});
+
+els.recruitResetBtn.addEventListener('click', () => {
+  els.recruitResults.classList.remove('show');
+  els.recruitCta.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+</script>
+</body>
+</html>
