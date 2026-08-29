@@ -57,7 +57,7 @@ function extractJson(text) {
 async function callAnthropic(userContent, useTools) {
   const body = {
     model: "claude-sonnet-5",
-    max_tokens: 1500,
+    max_tokens: 4000,
     system: buildSystemPrompt(),
     messages: [{ role: "user", content: userContent }],
   };
