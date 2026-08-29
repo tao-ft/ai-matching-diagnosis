@@ -266,6 +266,7 @@
 
   .dna-bridge{border-top:1px solid var(--line);margin-top:28px;padding-top:22px;}
   .dna-bridge p{font-size:14px;color:var(--text-dim);line-height:1.9;margin:0 0 16px;}
+  .term-note{font-size:12px;color:var(--text-faint);margin-top:8px;line-height:1.7;}
 
   footer{margin-top:70px;font-size:12px;color:var(--text-faint);text-align:center;line-height:1.9;}
 </style>
@@ -776,7 +777,7 @@ function renderRecruitResults(d){
   const barsWrap = document.getElementById('recruit-score-bars');
   barsWrap.innerHTML = '';
   const axisLabels = [
-    ['growth', '強みの明確さ'],
+    ['competence', 'コア・コンピタンスの明確さ'],
     ['conviction', 'こだわりの言語化度'],
     ['fit', '価値観の合う人の分かりやすさ'],
     ['info', '働く環境情報の見つけやすさ'],
@@ -793,6 +794,15 @@ function renderRecruitResults(d){
     barsWrap.appendChild(row);
   });
   document.getElementById('recruit-score-caveat').textContent = (d.recruit_scores && d.recruit_scores.caveat) || '';
+
+  let termNote = document.getElementById('recruit-term-note');
+  if (!termNote) {
+    termNote = document.createElement('p');
+    termNote.id = 'recruit-term-note';
+    termNote.className = 'term-note';
+    document.getElementById('recruit-score-caveat').insertAdjacentElement('afterend', termNote);
+  }
+  termNote.textContent = '※「コア・コンピタンス」とは、強みを生み出す、他社に模倣されにくい自社独自の力のことです。';
 
   document.getElementById('recruit-conviction-text').textContent = d.conviction_text || '';
 
