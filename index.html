@@ -269,6 +269,26 @@
   .term-note{font-size:12.5px;color:var(--amber);font-weight:700;margin-top:8px;line-height:1.7;}
 
   footer{margin-top:70px;font-size:12px;color:var(--text-faint);text-align:center;line-height:1.9;}
+
+  /* ---------- Print / PDF保存 ---------- */
+  .print-row{margin-bottom:28px;}
+  .print-row .hint{margin-top:8px;}
+
+  @media print{
+    :root{
+      --ink:#FFFFFF;--panel:#FFFFFF;--panel-2:#F3F3F1;--line:#D8D8D3;
+      --text:#1B1E24;--text-dim:#4B5566;--text-faint:#6B7280;
+      --cyan-dim:rgba(87,217,201,0.12);--amber-dim:rgba(239,167,91,0.12);
+    }
+    body{background:#FFFFFF !important;}
+    .wrap{max-width:100%;padding:16px 6px;}
+    h1.hero, .section h2{color:#1B1E24 !important;}
+    .eyebrow, .hero-sub, #form-panel, #loading, #recruit-loading,
+    .reset-row, #recruit-cta, .print-hide, .toggle-manual, .lock-box{display:none !important;}
+    .panel, .perception-card, .risk-card, .action-card, .fit-card, .stamp{box-shadow:none !important;}
+    .section{page-break-inside:avoid;margin-bottom:26px;}
+    footer{color:#6B7280 !important;}
+  }
 </style>
 </head>
 <body>
@@ -316,6 +336,11 @@
   </div>
 
   <div id="results">
+
+    <div class="print-row print-hide">
+      <button type="button" class="btn btn-ghost btn-small" id="print-btn">この結果をPDFで保存する</button>
+      <div class="hint">押すと印刷画面が開きます。送信先（プリンタ）で「PDFとして保存」を選ぶと、PDFファイルとして保存できます。</div>
+    </div>
 
     <div class="section">
       <div class="section-eyebrow">01 — Simulation</div>
@@ -386,6 +411,11 @@
   </div>
 
   <div id="recruit-results">
+
+    <div class="print-row print-hide">
+      <button type="button" class="btn btn-ghost btn-small" id="recruit-print-btn">この結果をPDFで保存する</button>
+      <div class="hint">押すと印刷画面が開きます。送信先（プリンタ）で「PDFとして保存」を選ぶと、PDFファイルとして保存できます。</div>
+    </div>
 
     <div class="section">
       <div class="section-eyebrow">R01 — Score</div>
@@ -461,6 +491,7 @@ const els = {
   results: document.getElementById('results'),
   resetBtn: document.getElementById('reset-btn'),
   copyActionBtn: document.getElementById('copy-action-btn'),
+  printBtn: document.getElementById('print-btn'),
 
   recruitCta: document.getElementById('recruit-cta'),
   recruitCtaBtn: document.getElementById('recruit-cta-btn'),
@@ -473,6 +504,7 @@ const els = {
   recruitEmailError: document.getElementById('recruit-email-error'),
   recruitUnlockBtn: document.getElementById('recruit-unlock-btn'),
   recruitResetBtn: document.getElementById('recruit-reset-btn'),
+  recruitPrintBtn: document.getElementById('recruit-print-btn'),
 };
 
 els.toggleManual.addEventListener('click', () => {
@@ -724,6 +756,8 @@ els.resetBtn.addEventListener('click', () => {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 });
 
+els.printBtn.addEventListener('click', () => window.print());
+
 /* ---------- 採用版（Recruit） ---------- */
 
 const RECRUIT_LOADING_MESSAGES = [
@@ -908,6 +942,8 @@ els.recruitResetBtn.addEventListener('click', () => {
   els.recruitResults.classList.remove('show');
   els.recruitCta.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
+
+els.recruitPrintBtn.addEventListener('click', () => window.print());
 </script>
 </body>
 </html>
