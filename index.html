@@ -274,6 +274,25 @@
   .print-row{margin-bottom:28px;}
   .print-row .hint{margin-top:8px;}
 
+  /* ---------- 解説マニュアル ダウンロード ---------- */
+  .manual-banner{
+    display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px;
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:22px 24px;margin:0 0 40px;
+  }
+  .manual-banner-text{flex:1;min-width:220px;}
+  .manual-banner-text .label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    color:var(--text-faint);text-transform:uppercase;margin-bottom:6px;}
+  .manual-banner-text p{margin:0;font-size:13.5px;color:var(--text-dim);line-height:1.8;}
+  .btn-manual{
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;
+    padding:14px 26px;border-radius:10px;
+    background:var(--stamp-red);color:#FFFFFF;font-weight:800;font-size:14.5px;
+    letter-spacing:.02em;text-decoration:none;white-space:nowrap;
+    box-shadow:0 0 0 0 rgba(180,67,46,0);transition:transform .12s, box-shadow .12s;
+  }
+  .btn-manual:hover{transform:translateY(-1px);box-shadow:0 10px 26px -8px rgba(180,67,46,0.55);}
+
   @media print{
     :root{
       --ink:#FFFFFF;--panel:#FFFFFF;--panel-2:#F3F3F1;--line:#D8D8D3;
@@ -284,7 +303,7 @@
     .wrap{max-width:100%;padding:16px 6px;}
     h1.hero, .section h2{color:#1B1E24 !important;}
     .eyebrow, .hero-sub, #form-panel, #loading, #recruit-loading,
-    .reset-row, #recruit-cta, .print-hide, .toggle-manual, .lock-box{display:none !important;}
+    .reset-row, #recruit-cta, .print-hide, .toggle-manual, .lock-box, .manual-banner{display:none !important;}
     .panel, .perception-card, .risk-card, .action-card, .fit-card, .stamp{box-shadow:none !important;}
     .section{page-break-inside:avoid;margin-bottom:26px;}
     footer{color:#6B7280 !important;}
@@ -297,6 +316,14 @@
   <span class="eyebrow">AI Matching Diagnosis</span>
   <h1 class="hero">AIは、あなたの会社を<br>どう<span class="accent">紹介</span>しているか。</h1>
   <p class="hero-sub">会社名とURLを入力するだけで、ChatGPTやPerplexityに「御社の課題解決先」として聞いたとき、実際にどう答えるかをシミュレーションします。</p>
+
+  <div class="manual-banner">
+    <div class="manual-banner-text">
+      <div class="label">Manual</div>
+      <p>診断結果の読み方・評価基準をまとめた解説マニュアルです。診断結果とあわせてお読みください。</p>
+    </div>
+    <a href="/manual.pdf" download class="btn-manual">解説マニュアルをPDFでダウンロード</a>
+  </div>
 
   <div class="panel" id="form-panel">
     <div class="field">
