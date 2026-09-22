@@ -92,22 +92,7 @@ async function callAnthropic(userContent, useTools) {
   return extractJson(textBlocks);
 }
 
-// diagnose.jsと同じ簡易レート制限（別インスタンス扱いなので上限もここで独立管理）
-const rateLimitMap = new Map();
-const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count += 1;
-  return true;
-}
+const { checkRateLimit } = require("./_ratelimit");
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -128,7 +113,7 @@ module.exports = async (req, res) => {
   }
 
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
-  if (!checkRateLimit(ip)) {
+  if (!(await checkRateLimit(ip, "diagnose-recruit"))) {
     res.status(429).json({ error: "リクエストが多すぎます。しばらく時間をおいてから再度お試しください。" });
     return;
   }
@@ -149,6 +134,21 @@ module.exports = async (req, res) => {
     let result;
     try {
       result = await callAnthropic(userContent, true);
+
+      // AIが「取得不十分」と自己申告した場合、ユーザーが手動テキストを貼っていなければ
+      // もう一度だけ自動取得（web_searchツールあり）をやり直す
+      const hasManualText = !!(manualText && String(manualText).trim());
+      if (!hasManualText && result.retrieval_success === false) {
+        try {
+          const retryResult = await callAnthropic(userContent, true);
+          if (retryResult.retrieval_success !== false) {
+            result = retryResult;
+          }
+          // 2回目も取得不十分だった場合は、1回目の結果（retrieval_success:false）をそのまま使う
+        } catch (retryErr) {
+          console.warn("自動取得の再試行に失敗しました。最初の結果を使用します。", retryErr.message);
+        }
+      }
     } catch (firstErr) {
       console.warn("web_searchツール付きの呼び出しに失敗。ツールなしで再試行します。", firstErr.message);
       try {
