@@ -191,6 +191,19 @@
 
   .risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media (max-width:640px){.risk-grid{grid-template-columns:1fr;}}
+
+  .axis-note{font-size:12.5px;color:var(--text-faint);margin-top:6px;line-height:1.7;}
+  .axis-note:empty{display:none;}
+
+  .hearing-box{
+    border:1px solid rgba(180,67,46,0.35);border-radius:12px;
+    background:rgba(180,67,46,0.06);padding:18px 20px;margin-top:22px;
+    display:none;
+  }
+  .hearing-box.show{display:block;}
+  .hearing-box .hearing-label{font-family:var(--mono);font-size:11px;letter-spacing:.1em;
+    color:var(--stamp-red);text-transform:uppercase;margin-bottom:8px;}
+  .hearing-box p{margin:0;font-size:13.5px;color:var(--text);line-height:1.8;font-weight:600;}
   .risk-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--amber);
     border-radius:10px;padding:15px 16px;}
   .risk-card .risk-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;}
@@ -384,6 +397,8 @@
         <div class="score-bars" id="score-bars"></div>
       </div>
       <div class="caveat" id="score-caveat"></div>
+      <p class="axis-note" id="strength-nature-note"></p>
+      <p class="axis-note" id="target-concentration-note"></p>
     </div>
 
     <div class="section">
@@ -396,6 +411,10 @@
       <div class="section-eyebrow">04 — Risk</div>
       <h2>AIに選ばれないリスク</h2>
       <div class="risk-grid" id="risk-grid"></div>
+      <div class="hearing-box" id="hearing-box">
+        <div class="hearing-label">経営者へのヒアリング推奨事項</div>
+        <p id="hearing-note-text"></p>
+      </div>
     </div>
 
     <div class="section">
@@ -651,6 +670,12 @@ function renderResults(d){
   });
   document.getElementById('score-caveat').textContent = (d.scores && d.scores.caveat) || '';
 
+  const strengthNatureEl = document.getElementById('strength-nature-note');
+  strengthNatureEl.textContent = d.strength_nature ? `※ 強みの質について：${d.strength_nature}` : '';
+
+  const targetConcEl = document.getElementById('target-concentration-note');
+  targetConcEl.textContent = d.target_concentration_note ? `※ 顧客集中度について：${d.target_concentration_note}` : '';
+
   // perception
   document.getElementById('perception-text').textContent = d.ai_perception || '';
 
@@ -669,6 +694,16 @@ function renderResults(d){
     card.innerHTML = `<div class="risk-title">${label}</div><div class="risk-body">${escapeHtml((d.risks && d.risks[key]) || '')}</div>`;
     riskGrid.appendChild(card);
   });
+
+  const hearingBox = document.getElementById('hearing-box');
+  const hearingText = document.getElementById('hearing-note-text');
+  if (d.hearing_note && d.hearing_note.trim()){
+    hearingText.textContent = d.hearing_note;
+    hearingBox.classList.add('show');
+  } else {
+    hearingText.textContent = '';
+    hearingBox.classList.remove('show');
+  }
 
   // action sentence
   document.getElementById('action-text').textContent = d.action_sentence || '';
