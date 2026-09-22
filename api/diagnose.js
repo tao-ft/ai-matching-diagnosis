@@ -16,9 +16,12 @@ function buildSystemPrompt() {
 "経営者に「点数で安心してもらうこと」ではなく、「具体的な行動を1つ起こしてもらうこと」です。たとえ高得点であっても、必ず「それでも改善の余地がある」旨を含めてください。",
 "",
 "■ 評価軸（各10点満点・計40点満点）",
-"1. 強みの明確さ：AIが「この会社の独自の強みは何か」を明確に抽出・要約できる内容になっているか。",
+"1. 強みの明確さ：AIが「この会社の独自の強みは何か」を明確に抽出・要約できる内容になっているか。加えて、語られている強みが、価格・納期・品質など他社と比較されやすい「機能的価値」にとどまっているのか、それとも模倣されにくい「組織的能力（コア・コンピタンスに近いもの）」にまで踏み込んで語られているのかを判定し、strength_natureに記述すること。",
 "2. パーパス・価値観のわかりやすさ：業務内容だけでなく、企業の理念やどのような想いで事業を行っているか（共感軸）が言語化されているか。",
-"3. ターゲット（共感する相手）の特定度：どのような課題・悩み・欲求を持った人に向けたサービスなのかが明確で、AIがペルソナマッチングしやすいか。",
+"3. ターゲット（共感する相手）の特定度：どのような課題・悩み・欲求を持った人に向けたサービスなのかが明確で、AIがペルソナマッチングしやすいか。加えて、特定の業界・顧客層に強く特化している傾向（顧客集中度が高い可能性）が見られる場合、その特化が単なる実績の偏りではなく、「どんな価値を提供できるか」という機能的価値の言葉として語られているかを判定し、target_concentration_noteに記述すること。特化の兆候が見られない場合、target_concentration_noteは空文字とする。",
+"",
+"■ ヒアリング推奨事項について（重要）",
+"target_concentration_noteで顧客集中度が高いと判定し、かつstrength_natureが「機能的価値にとどまっている」という判定である場合に限り、hearing_noteに「※要確認：主要顧客の景気敏感度」という書き出しで始まる一文を記述すること。これは経営者に直接確認すべきヒアリング項目として扱う。上記の条件に当てはまらない場合、hearing_noteは空文字とする。",
 "4. 構造化・情報発信の適切さ：具体的・論理的な記述になっており、AIが信頼できる情報源として学習・参照しやすい文章構造になっているか。",
 "",
 "■ 出力形式（重要）",
@@ -34,6 +37,8 @@ function buildSystemPrompt() {
 '    {"question": "想定される顧客の検索・質問文2（30字程度）", "current_answer": "同上（120字程度）", "ideal_answer": "同上（120字程度）"}',
 '  ],',
 '  "scores": {"strength": 0から10の整数, "purpose": 0から10の整数, "target": 0から10の整数, "structure": 0から10の整数, "rank": "A、B、C、Dのいずれか1文字", "caveat": "高得点でも改善の余地がある旨を含む一文（60字程度）"},',
+'  "strength_nature": "強みが「機能的価値」にとどまっているか、「組織的能力（コア・コンピタンス）」にまで踏み込んでいるかの一言判定（60字程度）",',
+'  "target_concentration_note": "顧客集中度についての所見（60字程度）。特化の兆候が見られない場合は空文字",',
 '  "ai_perception": "AIがこのサイトを読み込んだ際、どのような企業として認識・要約するか（180字程度）",',
 '  "risks": {',
 '    "strength": "強みの明確さについての現状課題とリスク（70字程度）",',
@@ -41,6 +46,7 @@ function buildSystemPrompt() {
 '    "target": "ターゲットの特定度についてのリスク（70字程度）",',
 '    "structure": "情報の構造化度についてのリスク（70字程度）"',
 '  },',
+'  "hearing_note": "経営者へのヒアリング推奨事項。該当する場合は「※要確認：主要顧客の景気敏感度」から始まる一文（80字程度）。該当しない場合は空文字",',
 '  "action_sentence": "経営者が自分で書く必要がなく、今日コピー＆ペーストでサイトに貼るだけで完結する一文または短い段落。強み・パーパス・想定ターゲットの要素を自然な形で含む、完成した日本語の文章（150〜250字程度）",',
 '  "next_steps": [',
 '    {"title": "STEP1：技術・実績を物語に変える", "description": "1〜2行の具体的な提言"},',
@@ -104,22 +110,7 @@ async function callAnthropic(userContent, useTools) {
   return extractJson(textBlocks);
 }
 
-// 非常に簡易なレート制限（同一インスタンス内のみ有効。本番運用ではUpstash等の外部ストアに置き換え推奨）
-const rateLimitMap = new Map();
-const RATE_LIMIT_MAX = 20; // 1時間あたりの上限（IPごと）
-const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
-
-function checkRateLimit(ip) {
-  const now = Date.now();
-  const entry = rateLimitMap.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateLimitMap.set(ip, { windowStart: now, count: 1 });
-    return true;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return false;
-  entry.count += 1;
-  return true;
-}
+const { checkRateLimit } = require("./_ratelimit");
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -140,7 +131,7 @@ module.exports = async (req, res) => {
   }
 
   const ip = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
-  if (!checkRateLimit(ip)) {
+  if (!(await checkRateLimit(ip, "diagnose"))) {
     res.status(429).json({ error: "リクエストが多すぎます。しばらく時間をおいてから再度お試しください。" });
     return;
   }
