@@ -8,9 +8,9 @@ function buildSystemPrompt() {
 "ユーザーから提供される「企業名」「URL」「（あれば）サイトのテキスト」をもとに、今後のAI時代（ChatGPT、Perplexity、Google検索の生成AI回答等）において、この企業が「ユーザーの課題解決に最適な企業」としてAIに選ばれるかどうかを診断してください。",
 "",
 "■ サイト情報の取得について",
-"- ユーザーがサイトのテキストを直接貼り付けている場合は、それを最優先の情報源として使ってください。",
-"- サイトのテキストが提供されていない、または不十分な場合は、web_searchツールを使って提供されたURL（トップページ、代表挨拶・理念、事業内容、強み・特長などのページ）の内容をできる限り取得してください。",
-"- URLからの取得を試みても、内容がほとんど得られなかった場合（サイトが存在しない、アクセスできない、情報が極端に乏しいなど）は、retrieval_successをfalseにし、retrieval_noteに理由を簡潔に記載してください。この場合、他の項目は無理に埋めず、簡潔な内容で構いません。",
+"- サイトのテキストが提供されている場合は、それを最優先の情報源として使ってください。このテキストはページのHTMLから機械的に抽出したものであるため、ナビゲーションメニューやフッターなど本文以外の文字列が混ざっている場合がありますが、可能な範囲で本文とみられる内容を中心に読み取ってください。",
+"- サイトのテキストが提供されておらず、かつweb_searchツールが利用可能な場合は、それを使って提供されたURLの内容をできる限り取得してください。",
+"- いずれの方法でも十分な情報が得られなかった場合は、retrieval_successをfalseにし、retrieval_noteに理由を簡潔に記載してください。この場合、他の項目は無理に埋めず、簡潔な内容で構いません。",
 "",
 "■ 診断の目的",
 "経営者に「点数で安心してもらうこと」ではなく、「具体的な行動を1つ起こしてもらうこと」です。たとえ高得点であっても、必ず「それでも改善の余地がある」旨を含めてください。",
@@ -111,6 +111,19 @@ async function callAnthropic(userContent, useTools) {
 }
 
 const { checkRateLimit } = require("./_ratelimit");
+const { fetchSiteText } = require("./_fetchsite");
+
+function buildUserContent(companyName, url, siteText, autoFetched) {
+  const lines = [`企業名: ${companyName}`, `URL: ${url}`];
+  if (siteText) {
+    lines.push(
+      "",
+      autoFetched ? "【サイトのテキスト（サーバーが自動取得したもの）】" : "【サイトのテキスト（ユーザーが貼り付けたもの）】",
+      siteText
+    );
+  }
+  return lines.join("\n");
+}
 
 module.exports = async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -143,41 +156,59 @@ module.exports = async (req, res) => {
       return;
     }
 
-    const userLines = [`企業名: ${companyName}`, `URL: ${url}`];
-    if (manualText && String(manualText).trim()) {
-      userLines.push("", "【サイトのテキスト（ユーザーが貼り付けたもの）】", String(manualText).trim());
+    const hasManualText = !!(manualText && String(manualText).trim());
+
+    // ステップ1：手動テキストが無ければ、まずサーバー側で直接URLを取得する
+    let siteText = hasManualText ? String(manualText).trim() : null;
+    let autoFetched = false;
+    if (!siteText) {
+      const fetched = await fetchSiteText(url);
+      if (fetched) {
+        siteText = fetched;
+        autoFetched = true;
+      }
     }
-    const userContent = userLines.join("\n");
 
     let result;
     try {
-      result = await callAnthropic(userContent, true);
+      // サイトのテキストが手元にある場合はweb_searchツールなしで十分（高速・安定）。
+      // 何も取得できていない場合のみ、予備手段としてweb_searchツールを使う。
+      result = await callAnthropic(buildUserContent(companyName, url, siteText, autoFetched), !siteText);
 
-      // AIが「取得不十分」と自己申告した場合、ユーザーが手動テキストを貼っていなければ
-      // もう一度だけ自動取得（web_searchツールあり）をやり直す
-      const hasManualText = !!(manualText && String(manualText).trim());
+      // それでも取得不十分だった場合、まだ試していない手段が残っていれば1回だけ再試行する
       if (!hasManualText && result.retrieval_success === false) {
-        try {
-          const retryResult = await callAnthropic(userContent, true);
-          if (retryResult.retrieval_success !== false) {
-            result = retryResult;
+        if (!autoFetched) {
+          // まだサーバー側の直接取得を試していなければ、ここで試す
+          const fetched2 = await fetchSiteText(url);
+          if (fetched2) {
+            try {
+              const retryResult = await callAnthropic(buildUserContent(companyName, url, fetched2, true), false);
+              if (retryResult.retrieval_success !== false) result = retryResult;
+            } catch (retryErr) {
+              console.warn("再試行(直接取得後)に失敗しました。最初の結果を使用します。", retryErr.message);
+            }
           }
-          // 2回目も取得不十分だった場合は、1回目の結果（retrieval_success:false）をそのまま使う
-        } catch (retryErr) {
-          console.warn("自動取得の再試行に失敗しました。最初の結果を使用します。", retryErr.message);
+        } else {
+          // 直接取得したテキストでも不十分だった場合、web_searchツール込みでもう一度だけ試す
+          try {
+            const retryResult = await callAnthropic(buildUserContent(companyName, url, siteText, true), true);
+            if (retryResult.retrieval_success !== false) result = retryResult;
+          } catch (retryErr) {
+            console.warn("再試行(web_search併用)に失敗しました。最初の結果を使用します。", retryErr.message);
+          }
         }
       }
     } catch (firstErr) {
-      console.warn("web_searchツール付きの呼び出しに失敗。ツールなしで再試行します。", firstErr.message);
+      console.warn("AI呼び出しに失敗。条件を変えて再試行します。", firstErr.message);
       try {
-        result = await callAnthropic(userContent, false);
-        if (!(manualText && String(manualText).trim()) && result.retrieval_success !== false) {
+        result = await callAnthropic(buildUserContent(companyName, url, siteText, autoFetched), false);
+        if (!hasManualText && !siteText && result.retrieval_success !== false) {
           result.retrieval_success = false;
           result.retrieval_note = "自動でのサイト取得機能が一時的に利用できませんでした。";
         }
       } catch (secondErr) {
         res.status(502).json({
-          error: `1回目（自動取得あり）: ${firstErr.message} ／ 2回目（自動取得なし）: ${secondErr.message}`,
+          error: `1回目: ${firstErr.message} ／ 2回目: ${secondErr.message}`,
         });
         return;
       }
