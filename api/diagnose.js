@@ -135,6 +135,57 @@ function extractResult(data) {
   throw new Error("AIが診断結果を提出しませんでした（submit_diagnosisツールが呼び出されませんでした）");
 }
 
+// AIが指示通りの型（配列/オブジェクト）で項目を埋めてくれなかった場合に備え、
+// 画面側が確実に扱える安全な形に補正する（特にretrieval_success:falseのケースで発生しやすい）。
+function toArray(v) {
+  return Array.isArray(v) ? v : [];
+}
+function toStr(v) {
+  return typeof v === "string" ? v : (v == null ? "" : String(v));
+}
+function toObj(v) {
+  return (v && typeof v === "object" && !Array.isArray(v)) ? v : {};
+}
+function sanitizeResult(raw) {
+  const r = toObj(raw);
+  const scores = toObj(r.scores);
+  const risks = toObj(r.risks);
+  const conclusion = toObj(r.conclusion);
+  return {
+    retrieval_success: r.retrieval_success !== false,
+    retrieval_note: toStr(r.retrieval_note),
+    company_name: toStr(r.company_name),
+    simulated_conversations: toArray(r.simulated_conversations).map((s) => {
+      const o = toObj(s);
+      return { question: toStr(o.question), current_answer: toStr(o.current_answer), ideal_answer: toStr(o.ideal_answer) };
+    }),
+    scores: {
+      strength: typeof scores.strength === "number" ? scores.strength : 0,
+      purpose: typeof scores.purpose === "number" ? scores.purpose : 0,
+      target: typeof scores.target === "number" ? scores.target : 0,
+      structure: typeof scores.structure === "number" ? scores.structure : 0,
+      rank: toStr(scores.rank) || "–",
+      caveat: toStr(scores.caveat),
+    },
+    ai_perception: toStr(r.ai_perception),
+    risks: {
+      strength: toStr(risks.strength),
+      purpose: toStr(risks.purpose),
+      target: toStr(risks.target),
+      structure: toStr(risks.structure),
+    },
+    action_sentence: toStr(r.action_sentence),
+    next_steps: toArray(r.next_steps).map((s) => {
+      const o = toObj(s);
+      return { title: toStr(o.title), description: toStr(o.description) };
+    }),
+    conclusion: {
+      loss_note: toStr(conclusion.loss_note),
+      recheck_note: toStr(conclusion.recheck_note),
+    },
+  };
+}
+
 async function callAnthropic(userContent, useWebSearch) {
   const tools = useWebSearch
     ? [{ type: "web_search_20250305", name: "web_search" }, submitDiagnosisTool]
@@ -164,7 +215,7 @@ async function callAnthropic(userContent, useWebSearch) {
   }
 
   const data = JSON.parse(rawText);
-  return extractResult(data);
+  return sanitizeResult(extractResult(data));
 }
 
 const { checkRateLimit } = require("./_ratelimit");
