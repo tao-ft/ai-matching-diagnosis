@@ -127,6 +127,47 @@ function extractResult(data) {
   throw new Error("AIが診断結果を提出しませんでした（submit_diagnosisツールが呼び出されませんでした）");
 }
 
+// AIが指示通りの型（配列/オブジェクト）で項目を埋めてくれなかった場合に備え、
+// 画面側が確実に扱える安全な形に補正する（特にretrieval_success:falseのケースで発生しやすい）。
+function toArray(v) {
+  return Array.isArray(v) ? v : [];
+}
+function toStr(v) {
+  return typeof v === "string" ? v : (v == null ? "" : String(v));
+}
+function toObj(v) {
+  return (v && typeof v === "object" && !Array.isArray(v)) ? v : {};
+}
+function sanitizeResult(raw) {
+  const r = toObj(raw);
+  const recruitScores = toObj(r.recruit_scores);
+  const fitPersona = toObj(r.fit_persona);
+  return {
+    retrieval_success: r.retrieval_success !== false,
+    retrieval_note: toStr(r.retrieval_note),
+    company_name: toStr(r.company_name),
+    recruit_scores: {
+      competence: typeof recruitScores.competence === "number" ? recruitScores.competence : 0,
+      conviction: typeof recruitScores.conviction === "number" ? recruitScores.conviction : 0,
+      fit: typeof recruitScores.fit === "number" ? recruitScores.fit : 0,
+      info: typeof recruitScores.info === "number" ? recruitScores.info : 0,
+      rank: toStr(recruitScores.rank) || "–",
+      caveat: toStr(recruitScores.caveat),
+    },
+    conviction_text: toStr(r.conviction_text),
+    environment_signals: toArray(r.environment_signals).map(toStr),
+    fit_persona: {
+      good_fit: toArray(fitPersona.good_fit).map(toStr),
+      caution: toArray(fitPersona.caution).map(toStr),
+    },
+    next_steps: toArray(r.next_steps).map((s) => {
+      const o = toObj(s);
+      return { title: toStr(o.title), description: toStr(o.description) };
+    }),
+    dna_bridge: toStr(r.dna_bridge),
+  };
+}
+
 async function callAnthropic(userContent, useWebSearch) {
   const tools = useWebSearch
     ? [{ type: "web_search_20250305", name: "web_search" }, submitDiagnosisTool]
@@ -156,7 +197,7 @@ async function callAnthropic(userContent, useWebSearch) {
   }
 
   const data = JSON.parse(rawText);
-  return extractResult(data);
+  return sanitizeResult(extractResult(data));
 }
 
 const { checkRateLimit } = require("./_ratelimit");
